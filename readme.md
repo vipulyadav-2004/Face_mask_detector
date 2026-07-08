@@ -1,3 +1,13 @@
+# ⚡ Edge AI Face Mask Detector
+
+A lightweight, real-time edge AI application that detects face masks from a live webcam feed leveraging deep learning (**PyTorch**) and computer vision (**OpenCV**).
+
+## 🛠️ Tech Stack & Core Libraries
+* **Deep Learning Framework** 🧠: PyTorch (nn.Module, Torchvision)
+* **Computer Vision Processing** 📷: OpenCV (BGR/RGB transformation, Haar Cascades)
+* **Image Transformation Pipeline** 🔄: Pillow (PIL)
+* **Production Deployment Interface** 🌐: Streamlit & Streamlit-WeBRTC
+
 ## Face Mask Detector
 
 This project now includes a small browser frontend for the local OpenCV camera feed.
@@ -21,12 +31,3 @@ python app.py
 - Provides a polished start/stop dashboard for demos and local testing.
 
 
-# ⚡ Edge AI Face Mask Detector
-
-A lightweight, real-time edge AI application that detects face masks from a live webcam feed leveraging deep learning (**PyTorch**) and computer vision (**OpenCV**).
-
-## 🛠️ Tech Stack & Core Libraries
-* **Deep Learning Framework** 🧠: PyTorch (nn.Module, Torchvision)
-* **Computer Vision Processing** 📷: OpenCV (BGR/RGB transformation, Haar Cascades)
-* **Image Transformation Pipeline** 🔄: Pillow (PIL)
-* **Production Deployment Interface** 🌐: Streamlit & Streamlit-WeBRTC
