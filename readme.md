@@ -30,4 +30,8 @@ python app.py
 - Overlays `Mask` / `No Mask` labels directly on the feed.
 - Provides a polished start/stop dashboard for demos and local testing.
 
+### Deployment note
+
+The app includes a `vercel.json` entry for deployment, but the live webcam stream depends on local OpenCV camera access, so the full camera experience is intended for local runs rather than serverless hosting.
+
 
