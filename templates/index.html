@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Face Mask Detector</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <div class="hero-copy">
+        <span class="eyebrow">Live OpenCV Camera</span>
+        <h1>Real-time face mask detection.</h1>
+        <p>
+          Launch the local camera, stream the processed feed, and review mask predictions
+          without leaving the browser.
+        </p>
+
+        <div class="controls">
+          <button id="toggleStream" class="primary">Start camera</button>
+          <button id="refreshStream" class="secondary">Refresh feed</button>
+        </div>
+
+        <div class="stats">
+          <div class="stat-card">
+            <span class="label">Camera</span>
+            <strong id="cameraStatus">Offline</strong>
+          </div>
+          <div class="stat-card">
+            <span class="label">Model</span>
+            <strong>Ready</strong>
+          </div>
+          <div class="stat-card">
+            <span class="label">Mode</span>
+            <strong>Live detection</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="viewer-wrap">
+        <div class="viewer-header">
+          <div>
+            <span class="dot"></span>
+            <span id="streamState">Stream idle</span>
+          </div>
+          <span class="pill">OpenCV</span>
+        </div>
+
+        <div class="viewer">
+          <img id="cameraFeed" alt="Live camera feed" src="" />
+          <div id="emptyState" class="empty-state">
+            <h2>Camera preview disabled</h2>
+            <p>Click Start camera to open your local webcam and begin detection.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="details">
+      <article>
+        <h3>What this page does</h3>
+        <p>Serves the OpenCV camera feed inside a polished dashboard and overlays the mask prediction on each detected face.</p>
+      </article>
+      <article>
+        <h3>How it feels</h3>
+        <p>Minimal controls, clear status feedback, and a focused layout designed for demos and local testing.</p>
+      </article>
+      <article>
+        <h3>How to use</h3>
+        <p>Run the Flask app, open the local URL, then start or stop the camera stream from the browser.</p>
+      </article>
+    </section>
+  </main>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
