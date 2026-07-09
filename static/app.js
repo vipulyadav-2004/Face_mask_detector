@@ -61,38 +61,44 @@ function drawOverlay() {
   const context = overlayCanvas.getContext("2d");
   context.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
 
-  if (!latestFaces.length) {
-    return;
-  }
+  if (!latestFaces.length) return;
 
   latestFaces.forEach((face) => {
     const isMask = face.label === "Mask";
     const strokeColor = isMask ? "#22c55e" : "#f97316";
+    
+    // Label dimensions
     const labelHeight = 44;
-    const labelWidth = Math.min(220, Math.max(140, face.width + 8));
-    const labelX = Math.max(0, face.x);
-    const labelY = Math.max(0, face.y - labelHeight - 6);
-    const boxX = face.x;
-    const boxY = face.y;
-    const boxWidth = face.width;
-    const boxHeight = face.height;
+    const labelWidth = 180;
+    
+    // Determine position: If face is too close to top, put label below the box
+    const labelX = face.x;
+    const labelY = (face.y - labelHeight - 10 < 0) 
+                   ? (face.y + face.height + 10) // Put below
+                   : (face.y - labelHeight - 10); // Put above
 
+    // Draw box
     context.strokeStyle = strokeColor;
     context.lineWidth = 4;
-    context.strokeRect(boxX, boxY, boxWidth, boxHeight);
+    context.strokeRect(face.x, face.y, face.width, face.height);
 
+    // Draw background for text
     context.fillStyle = "rgba(6, 17, 31, 0.88)";
     context.fillRect(labelX, labelY, labelWidth, labelHeight);
+    
+    // Draw border for text background
     context.strokeStyle = strokeColor;
     context.lineWidth = 2;
     context.strokeRect(labelX, labelY, labelWidth, labelHeight);
 
+    // Draw text
     context.fillStyle = "#eef3ff";
     context.font = "800 14px Manrope, sans-serif";
-    context.fillText(`Prediction: ${face.label}`, labelX + 10, labelY + 16);
+    context.fillText(`Prediction: ${face.label}`, labelX + 10, labelY + 18);
+    
     context.font = "600 11px Manrope, sans-serif";
     context.fillStyle = "#9db0d0";
-    context.fillText(`Confidence: ${(face.confidence * 100).toFixed(1)}%`, labelX + 10, labelY + 31);
+    context.fillText(`Confidence: ${(face.confidence * 100).toFixed(1)}%`, labelX + 10, labelY + 34);
   });
 }
 
