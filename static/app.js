@@ -12,7 +12,7 @@ let cameraStream = null;
 let useFrontCamera = true;
 let animationFrameId = null;
 let isClassifying = false;
-let latestPrediction = null;
+let latestFaces = [];
 
 const captureCanvas = document.createElement("canvas");
 const captureContext = captureCanvas.getContext("2d", { willReadFrequently: true });
@@ -60,28 +60,39 @@ function drawOverlay() {
   const context = overlayCanvas.getContext("2d");
   context.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
 
-  if (!latestPrediction) {
+  if (!latestFaces.length) {
     return;
   }
 
-  const isMask = latestPrediction.label === "Mask";
-  const panelWidth = Math.min(240, overlayCanvas.width - 32);
-  const panelX = 20;
-  const panelY = 20;
-  const panelHeight = 96;
-  context.fillStyle = "rgba(6, 17, 31, 0.82)";
-  context.fillRect(panelX, panelY, panelWidth, panelHeight);
-  context.strokeStyle = isMask ? "#22c55e" : "#f97316";
-  context.lineWidth = 3;
-  context.strokeRect(panelX, panelY, panelWidth, panelHeight);
-  context.textBaseline = "top";
-  context.fillStyle = "#eef3ff";
-  context.font = "800 16px Manrope, sans-serif";
-  context.fillText("Prediction:", panelX + 12, panelY + 12);
-  context.fillText(latestPrediction.label, panelX + 12, panelY + 34);
-  context.font = "600 14px Manrope, sans-serif";
-  context.fillStyle = "#9db0d0";
-  context.fillText(`Confidence: ${(latestPrediction.confidence * 100).toFixed(1)}%`, panelX + 12, panelY + 60);
+  latestFaces.forEach((face, index) => {
+    const isMask = face.label === "Mask";
+    const strokeColor = isMask ? "#22c55e" : "#f97316";
+    const labelHeight = 34;
+    const labelWidth = Math.min(180, Math.max(120, face.width));
+    const labelX = Math.max(0, face.x);
+    const labelY = Math.max(0, face.y - labelHeight - 6);
+    const boxX = face.x;
+    const boxY = face.y;
+    const boxWidth = face.width;
+    const boxHeight = face.height;
+
+    context.strokeStyle = strokeColor;
+    context.lineWidth = 4;
+    context.strokeRect(boxX, boxY, boxWidth, boxHeight);
+
+    context.fillStyle = "rgba(6, 17, 31, 0.88)";
+    context.fillRect(labelX, labelY, labelWidth, labelHeight);
+    context.strokeStyle = strokeColor;
+    context.lineWidth = 2;
+    context.strokeRect(labelX, labelY, labelWidth, labelHeight);
+
+    context.fillStyle = "#eef3ff";
+    context.font = "800 14px Manrope, sans-serif";
+    context.fillText(`${face.label}`, labelX + 10, labelY + 13);
+    context.font = "600 11px Manrope, sans-serif";
+    context.fillStyle = "#9db0d0";
+    context.fillText(`${(face.confidence * 100).toFixed(1)}%`, labelX + 10, labelY + 27);
+  });
 }
 
 async function classifyFrame() {
@@ -105,11 +116,15 @@ async function classifyFrame() {
       throw new Error("classification failed");
     }
 
-    latestPrediction = await response.json();
-    cameraStatus.textContent = `Online - ${latestPrediction.label}`;
+    const data = await response.json();
+    latestFaces = data.faces || [];
+    cameraStatus.textContent = latestFaces.length
+      ? `Online - ${latestFaces[0].label}`
+      : "Online - No face";
     drawOverlay();
   } catch (error) {
-    latestPrediction = null;
+    latestFaces = [];
+    drawOverlay();
   }
 
   isClassifying = false;
@@ -128,7 +143,6 @@ async function startStream() {
     setStreamState(true);
     cameraStatus.textContent = "Online";
     resizeCanvas();
-    latestPrediction = null;
     animationFrameId = window.setTimeout(classifyFrame, 250);
   } catch (error) {
     cameraStatus.textContent = "Offline";
