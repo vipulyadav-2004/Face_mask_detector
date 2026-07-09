@@ -1,19 +1,16 @@
 const toggleButton = document.getElementById("toggleStream");
-const switchButton = document.getElementById("switchCamera");
 const cameraFeed = document.getElementById("cameraFeed");
 const overlayCanvas = document.getElementById("overlayCanvas");
 const emptyState = document.getElementById("emptyState");
 const viewer = document.querySelector(".viewer");
-const streamState = document.getElementById("streamState");
 const cameraStatus = document.getElementById("cameraStatus");
+const liveBadge = document.getElementById("liveFloatingBadge"); // From the HTML template
 
 let streamActive = false;
 let cameraStream = null;
-let useFrontCamera = true;
 let animationFrameId = null;
 let isClassifying = false;
-let faceDetector = null;
-let latestFaces = [];
+let useFaceDetector = false;
 
 const captureCanvas = document.createElement("canvas");
 const captureContext = captureCanvas.getContext("2d", { willReadFrequently: true });
@@ -22,229 +19,75 @@ function setStreamState(active) {
   streamActive = active;
   viewer.classList.toggle("active", active);
   emptyState.style.display = active ? "none" : "grid";
-  cameraFeed.style.display = active ? "block" : "none";
-  overlayCanvas.style.display = active ? "block" : "none";
   toggleButton.textContent = active ? "Stop camera" : "Start camera";
-  streamState.textContent = active ? "Camera live" : "Stream idle";
 }
 
-function stopStream() {
-  if (animationFrameId) {
-    clearTimeout(animationFrameId);
-    animationFrameId = null;
-  }
-
-  if (cameraStream) {
-    cameraStream.getTracks().forEach((track) => track.stop());
-    cameraStream = null;
-  }
-
-  cameraFeed.srcObject = null;
-  const context = overlayCanvas.getContext("2d");
-  context.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-  latestFaces = [];
-  faceDetector = null;
-  setStreamState(false);
-}
-
-function resizeCanvas() {
-  const { videoWidth, videoHeight } = cameraFeed;
-  if (!videoWidth || !videoHeight) {
-    return;
-  }
-
-  overlayCanvas.width = videoWidth;
-  overlayCanvas.height = videoHeight;
-  captureCanvas.width = videoWidth;
-  captureCanvas.height = videoHeight;
-}
-
-function drawOverlay() {
-  const context = overlayCanvas.getContext("2d");
-  context.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-
-  if (!latestFaces.length) return;
-
-  latestFaces.forEach((face) => {
-    const isMask = face.label === "Mask";
-    const strokeColor = isMask ? "#22c55e" : "#f97316";
-    
-    // Label dimensions
-    const labelHeight = 44;
-    const labelWidth = 180;
-    
-    // Determine position: If face is too close to top, put label below the box
-    const labelX = face.x;
-    const labelY = (face.y - labelHeight - 10 < 0) 
-                   ? (face.y + face.height + 10) // Put below
-                   : (face.y - labelHeight - 10); // Put above
-
-    // Draw box
-    context.strokeStyle = strokeColor;
-    context.lineWidth = 4;
-    context.strokeRect(face.x, face.y, face.width, face.height);
-
-    // Draw background for text
-    context.fillStyle = "rgba(6, 17, 31, 0.88)";
-    context.fillRect(labelX, labelY, labelWidth, labelHeight);
-    
-    // Draw border for text background
-    context.strokeStyle = strokeColor;
-    context.lineWidth = 2;
-    context.strokeRect(labelX, labelY, labelWidth, labelHeight);
-
-    // Draw text
-    context.fillStyle = "#eef3ff";
-    context.font = "800 14px Manrope, sans-serif";
-    context.fillText(`Prediction: ${face.label}`, labelX + 10, labelY + 18);
-    
-    context.font = "600 11px Manrope, sans-serif";
-    context.fillStyle = "#9db0d0";
-    context.fillText(`Confidence: ${(face.confidence * 100).toFixed(1)}%`, labelX + 10, labelY + 34);
-  });
-}
-
-async function classifyFace(faceBox) {
-  if (isClassifying || !streamActive || !cameraFeed.videoWidth) {
-    return;
-  }
-
+async function classifyFrame() {
+  if (isClassifying || !streamActive) return;
   isClassifying = true;
 
   try {
-    captureContext.drawImage(
-      cameraFeed,
-      faceBox.x,
-      faceBox.y,
-      faceBox.width,
-      faceBox.height,
-      0,
-      0,
-      captureCanvas.width,
-      captureCanvas.height
-    );
+    captureContext.drawImage(cameraFeed, 0, 0, captureCanvas.width, captureCanvas.height);
     const response = await fetch("/api/classify", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ image: captureCanvas.toDataURL("image/jpeg", 0.75) }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image: captureCanvas.toDataURL("image/jpeg", 0.7) }),
     });
 
-    if (!response.ok) {
-      throw new Error("classification failed");
-    }
-
     const data = await response.json();
-    latestFaces = [
-      {
-        x: faceBox.x,
-        y: faceBox.y,
-        width: faceBox.width,
-        height: faceBox.height,
-        label: data.label,
-        confidence: data.confidence,
-      },
-    ];
-    cameraStatus.textContent = `Online - ${data.label}`;
-    drawOverlay();
-  }catch (error) {
-    console.error("Classification Error:", error); // Add this!
-    latestFaces = [];
-    drawOverlay();
-} finally {
+    if (data.label) {
+      // Update UI elements from your new HTML template
+      const badge = document.getElementById('liveFloatingBadge');
+      badge.style.display = 'block';
+      badge.innerText = data.label;
+      badge.className = data.label === "Mask" ? "live-prediction-badge status-mask" : "live-prediction-badge status-no-mask";
+      document.getElementById('textPredictionResult').innerText = data.label;
+      document.getElementById('textConfidenceResult').innerText = (data.confidence * 100).toFixed(1) + "%";
+    }
+  } catch (err) {
+    console.error("Classification error:", err);
+  } finally {
     isClassifying = false;
   }
 }
 
 async function detectionLoop() {
-  if (!streamActive || !faceDetector) {
-    animationFrameId = window.setTimeout(detectionLoop, 350);
-    return;
-  }
-
-  try {
+  if (!streamActive) return;
+  
+  // If FaceDetector exists, use it, otherwise classify the whole frame
+  if (useFaceDetector && faceDetector) {
     const faces = await faceDetector.detect(cameraFeed);
-    if (!faces.length) {
-      latestFaces = [];
-      drawOverlay();
-      cameraStatus.textContent = "Online - No face";
-    } else if (!isClassifying) {
-      const face = faces[0].boundingBox;
-      await classifyFace({
-        x: Math.max(0, Math.floor(face.x)),
-        y: Math.max(0, Math.floor(face.y)),
-        width: Math.floor(face.width),
-        height: Math.floor(face.height),
-      });
-    }
-  } catch (error) {
-    latestFaces = [];
-    drawOverlay();
+    if (faces.length > 0) await classifyFrame();
+  } else {
+    await classifyFrame();
   }
-
-  animationFrameId = window.setTimeout(detectionLoop, 350);
+  animationFrameId = setTimeout(detectionLoop, 500); // 2 frames per second is enough for smooth UI
 }
 
 async function startStream() {
   try {
-    cameraStream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: useFrontCamera ? "user" : "environment",
-      },
-      audio: false,
-    });
+    cameraStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
     cameraFeed.srcObject = cameraStream;
-    setStreamState(true);
-    cameraStatus.textContent = "Online";
-    resizeCanvas();
-    if ("FaceDetector" in window) {
-      faceDetector = new FaceDetector({ fastMode: true, maxDetectedFaces: 4 });
-      animationFrameId = window.setTimeout(detectionLoop, 250);
-    } else {
-      cameraStatus.textContent = "Browser FaceDetector not supported";
-    }
+    
+    // Setup canvases
+    cameraFeed.onloadedmetadata = () => {
+        captureCanvas.width = cameraFeed.videoWidth;
+        captureCanvas.height = cameraFeed.videoHeight;
+        setStreamState(true);
+        cameraStatus.textContent = "Online";
+        detectionLoop();
+    };
   } catch (error) {
-    cameraStatus.textContent = "Offline";
+    cameraStatus.textContent = "Camera Error";
     setStreamState(false);
   }
 }
 
-async function syncStatus() {
-  try {
-    const response = await fetch("/api/status", { cache: "no-store" });
-    const data = await response.json();
-    cameraStatus.textContent = data.camera_ready ? "Browser ready" : "Offline";
-  } catch (error) {
-    cameraStatus.textContent = "Offline";
-  }
+function stopStream() {
+  clearTimeout(animationFrameId);
+  if (cameraStream) cameraStream.getTracks().forEach(t => t.stop());
+  setStreamState(false);
+  cameraStatus.textContent = "Offline";
 }
 
-toggleButton.addEventListener("click", () => {
-  if (streamActive) {
-    stopStream();
-    return;
-  }
-
-  startStream();
-});
-
-switchButton.addEventListener("click", async () => {
-  useFrontCamera = !useFrontCamera;
-  if (streamActive) {
-    stopStream();
-    await startStream();
-  }
-});
-
-cameraFeed.addEventListener("loadedmetadata", () => {
-  cameraStatus.textContent = "Online";
-  resizeCanvas();
-});
-
-cameraFeed.addEventListener("play", () => {
-  resizeCanvas();
-});
-
-setStreamState(false);
-syncStatus();
+toggleButton.addEventListener("click", () => streamActive ? stopStream() : startStream());
