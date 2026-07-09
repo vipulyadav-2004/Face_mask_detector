@@ -1,3 +1,4 @@
 Pillow
 gunicorn
 flask
+numpy
