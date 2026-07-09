@@ -12,6 +12,7 @@ let cameraStream = null;
 let useFrontCamera = true;
 let animationFrameId = null;
 let isClassifying = false;
+let faceDetector = null;
 let latestFaces = [];
 
 const captureCanvas = document.createElement("canvas");
@@ -64,11 +65,11 @@ function drawOverlay() {
     return;
   }
 
-  latestFaces.forEach((face, index) => {
+  latestFaces.forEach((face) => {
     const isMask = face.label === "Mask";
     const strokeColor = isMask ? "#22c55e" : "#f97316";
-    const labelHeight = 34;
-    const labelWidth = Math.min(180, Math.max(120, face.width));
+    const labelHeight = 44;
+    const labelWidth = Math.min(220, Math.max(140, face.width + 8));
     const labelX = Math.max(0, face.x);
     const labelY = Math.max(0, face.y - labelHeight - 6);
     const boxX = face.x;
@@ -88,14 +89,14 @@ function drawOverlay() {
 
     context.fillStyle = "#eef3ff";
     context.font = "800 14px Manrope, sans-serif";
-    context.fillText(`${face.label}`, labelX + 10, labelY + 13);
+    context.fillText(`Prediction: ${face.label}`, labelX + 10, labelY + 16);
     context.font = "600 11px Manrope, sans-serif";
     context.fillStyle = "#9db0d0";
-    context.fillText(`${(face.confidence * 100).toFixed(1)}%`, labelX + 10, labelY + 27);
+    context.fillText(`Confidence: ${(face.confidence * 100).toFixed(1)}%`, labelX + 10, labelY + 31);
   });
 }
 
-async function classifyFrame() {
+async function classifyFace(faceBox) {
   if (isClassifying || !streamActive || !cameraFeed.videoWidth) {
     return;
   }
@@ -103,7 +104,17 @@ async function classifyFrame() {
   isClassifying = true;
 
   try {
-    captureContext.drawImage(cameraFeed, 0, 0, captureCanvas.width, captureCanvas.height);
+    captureContext.drawImage(
+      cameraFeed,
+      faceBox.x,
+      faceBox.y,
+      faceBox.width,
+      faceBox.height,
+      0,
+      0,
+      captureCanvas.width,
+      captureCanvas.height
+    );
     const response = await fetch("/api/classify", {
       method: "POST",
       headers: {
@@ -117,18 +128,53 @@ async function classifyFrame() {
     }
 
     const data = await response.json();
-    latestFaces = data.faces || [];
-    cameraStatus.textContent = latestFaces.length
-      ? `Online - ${latestFaces[0].label}`
-      : "Online - No face";
+    latestFaces = [
+      {
+        x: faceBox.x,
+        y: faceBox.y,
+        width: faceBox.width,
+        height: faceBox.height,
+        label: data.label,
+        confidence: data.confidence,
+      },
+    ];
+    cameraStatus.textContent = `Online - ${data.label}`;
     drawOverlay();
+  } catch (error) {
+    latestFaces = [];
+    drawOverlay();
+  } finally {
+    isClassifying = false;
+  }
+}
+
+async function detectionLoop() {
+  if (!streamActive || !faceDetector) {
+    animationFrameId = window.setTimeout(detectionLoop, 350);
+    return;
+  }
+
+  try {
+    const faces = await faceDetector.detect(cameraFeed);
+    if (!faces.length) {
+      latestFaces = [];
+      drawOverlay();
+      cameraStatus.textContent = "Online - No face";
+    } else if (!isClassifying) {
+      const face = faces[0].boundingBox;
+      await classifyFace({
+        x: Math.max(0, Math.floor(face.x)),
+        y: Math.max(0, Math.floor(face.y)),
+        width: Math.floor(face.width),
+        height: Math.floor(face.height),
+      });
+    }
   } catch (error) {
     latestFaces = [];
     drawOverlay();
   }
 
-  isClassifying = false;
-  animationFrameId = window.setTimeout(classifyFrame, 350);
+  animationFrameId = window.setTimeout(detectionLoop, 350);
 }
 
 async function startStream() {
@@ -143,7 +189,12 @@ async function startStream() {
     setStreamState(true);
     cameraStatus.textContent = "Online";
     resizeCanvas();
-    animationFrameId = window.setTimeout(classifyFrame, 250);
+    if ("FaceDetector" in window) {
+      faceDetector = new FaceDetector({ fastMode: true, maxDetectedFaces: 4 });
+      animationFrameId = window.setTimeout(detectionLoop, 250);
+    } else {
+      cameraStatus.textContent = "Browser FaceDetector not supported";
+    }
   } catch (error) {
     cameraStatus.textContent = "Offline";
     setStreamState(false);

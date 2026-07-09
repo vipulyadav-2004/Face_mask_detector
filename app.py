@@ -3,7 +3,6 @@ from __future__ import annotations
 import base64
 import io
 
-import cv2
 import numpy as np
 from PIL import Image
 import onnxruntime as ort
@@ -13,10 +12,6 @@ app = Flask(__name__)
 
 # 🧠 1. Load the lightweight ONNX model session
 ort_session = ort.InferenceSession("face_mask_cnn.onnx")
-
-face_cascade = cv2.CascadeClassifier(
-    cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
-)
 
 # 🛠️ 2. Manual preprocessing to match the original PyTorch transforms
 def preprocess_image(image: Image.Image) -> np.ndarray:
@@ -60,7 +55,7 @@ def index():
 
 @app.route("/api/status")
 def status():
-    return jsonify({"camera_ready": True, "model_ready": True, "mode": "frame-classification"})
+    return jsonify({"camera_ready": True, "model_ready": True, "mode": "browser-face-detection"})
 
 @app.route("/api/classify", methods=["POST"])
 def classify():
@@ -76,37 +71,15 @@ def classify():
     try:
         image_bytes = base64.b64decode(image_data)
         image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-        rgb_frame = np.array(image)
-        bgr_frame = cv2.cvtColor(rgb_frame, cv2.COLOR_RGB2BGR)
-        gray_frame = cv2.cvtColor(bgr_frame, cv2.COLOR_BGR2GRAY)
 
-        faces = face_cascade.detectMultiScale(
-            gray_frame,
-            scaleFactor=1.1,
-            minNeighbors=5,
-            minSize=(60, 60),
+        label, confidence = classify_face(image)
+
+        return jsonify(
+            {
+                "label": label,
+                "confidence": round(confidence, 4),
+            }
         )
-
-        results = []
-        for (x, y, w, h) in faces:
-            face_crop = rgb_frame[y : y + h, x : x + w]
-            if face_crop.size == 0:
-                continue
-
-            face_image = Image.fromarray(face_crop)
-            label, confidence = classify_face(face_image)
-            results.append(
-                {
-                    "x": int(x),
-                    "y": int(y),
-                    "width": int(w),
-                    "height": int(h),
-                    "label": label,
-                    "confidence": round(confidence, 4),
-                }
-            )
-
-        return jsonify({"faces": results})
     except Exception as exc:
         return jsonify({"error": str(exc)}), 500
 
