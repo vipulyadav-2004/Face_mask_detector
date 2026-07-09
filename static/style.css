@@ -210,14 +210,29 @@ button:active {
 }
 
 .viewer img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
   display: none;
 }
 
-.viewer.active img {
+.viewer video,
+.viewer canvas {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: absolute;
+  inset: 0;
+}
+
+.viewer video {
+  display: none;
+}
+
+.viewer.active video,
+.viewer.active canvas {
   display: block;
+}
+
+.viewer canvas {
+  pointer-events: none;
 }
 
 .empty-state {

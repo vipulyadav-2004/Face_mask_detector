@@ -16,13 +16,13 @@
         <span class="eyebrow">Live OpenCV Camera</span>
         <h1>Real-time face mask detection.</h1>
         <p>
-          Launch the local camera, stream the processed feed, and review mask predictions
-          without leaving the browser.
+          Open your browser camera, run face detection in the page, and review mask predictions
+          without depending on server-side webcam access.
         </p>
 
         <div class="controls">
           <button id="toggleStream" class="primary">Start camera</button>
-          <button id="refreshStream" class="secondary">Refresh feed</button>
+          <button id="switchCamera" class="secondary">Switch camera</button>
         </div>
 
         <div class="stats">
@@ -47,14 +47,15 @@
             <span class="dot"></span>
             <span id="streamState">Stream idle</span>
           </div>
-          <span class="pill">OpenCV</span>
+          <span class="pill">Browser Camera</span>
         </div>
 
         <div class="viewer">
-          <img id="cameraFeed" alt="Live camera feed" src="" />
+          <video id="cameraFeed" autoplay playsinline muted></video>
+          <canvas id="overlayCanvas"></canvas>
           <div id="emptyState" class="empty-state">
             <h2>Camera preview disabled</h2>
-            <p>Click Start camera to open your local webcam and begin detection.</p>
+            <p>Click Start camera to open your local webcam and begin detection in the browser.</p>
           </div>
         </div>
       </div>
@@ -63,7 +64,7 @@
     <section class="details">
       <article>
         <h3>What this page does</h3>
-        <p>Serves the OpenCV camera feed inside a polished dashboard and overlays the mask prediction on each detected face.</p>
+        <p>Serves a polished dashboard and uses the browser camera directly, so deployment does not depend on Render accessing a physical webcam.</p>
       </article>
       <article>
         <h3>How it feels</h3>
@@ -71,7 +72,7 @@
       </article>
       <article>
         <h3>How to use</h3>
-        <p>Run the Flask app, open the local URL, then start or stop the camera stream from the browser.</p>
+        <p>Open the deployed page, allow camera access in the browser, and start detection from the page controls.</p>
       </article>
     </section>
   </main>
