@@ -146,10 +146,11 @@ async function classifyFace(faceBox) {
     ];
     cameraStatus.textContent = `Online - ${data.label}`;
     drawOverlay();
-  } catch (error) {
+  }catch (error) {
+    console.error("Classification Error:", error); // Add this!
     latestFaces = [];
     drawOverlay();
-  } finally {
+} finally {
     isClassifying = false;
   }
 }
