@@ -30,7 +30,7 @@ function setStreamState(active) {
 
 function stopStream() {
   if (animationFrameId) {
-    cancelAnimationFrame(animationFrameId);
+    clearTimeout(animationFrameId);
     animationFrameId = null;
   }
 
@@ -42,6 +42,8 @@ function stopStream() {
   cameraFeed.srcObject = null;
   const context = overlayCanvas.getContext("2d");
   context.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+  latestFaces = [];
+  faceDetector = null;
   setStreamState(false);
 }
 
