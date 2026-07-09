@@ -65,18 +65,23 @@ function drawOverlay() {
   }
 
   const isMask = latestPrediction.label === "Mask";
-  const panelWidth = 210;
+  const panelWidth = Math.min(240, overlayCanvas.width - 32);
+  const panelX = 20;
+  const panelY = 20;
+  const panelHeight = 96;
   context.fillStyle = "rgba(6, 17, 31, 0.82)";
-  context.fillRect(16, 16, panelWidth, 72);
+  context.fillRect(panelX, panelY, panelWidth, panelHeight);
   context.strokeStyle = isMask ? "#22c55e" : "#f97316";
   context.lineWidth = 3;
-  context.strokeRect(16, 16, panelWidth, 72);
+  context.strokeRect(panelX, panelY, panelWidth, panelHeight);
+  context.textBaseline = "top";
   context.fillStyle = "#eef3ff";
-  context.font = "800 18px Manrope, sans-serif";
-  context.fillText(`Prediction: ${latestPrediction.label}`, 28, 44);
+  context.font = "800 16px Manrope, sans-serif";
+  context.fillText("Prediction:", panelX + 12, panelY + 12);
+  context.fillText(latestPrediction.label, panelX + 12, panelY + 34);
   context.font = "600 14px Manrope, sans-serif";
   context.fillStyle = "#9db0d0";
-  context.fillText(`Confidence: ${(latestPrediction.confidence * 100).toFixed(1)}%`, 28, 68);
+  context.fillText(`Confidence: ${(latestPrediction.confidence * 100).toFixed(1)}%`, panelX + 12, panelY + 60);
 }
 
 async function classifyFrame() {

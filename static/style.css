@@ -235,6 +235,10 @@ button:active {
   pointer-events: none;
 }
 
+#overlayCanvas {
+  padding: 0;
+}
+
 .empty-state {
   position: absolute;
   inset: 0;
